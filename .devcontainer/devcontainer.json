@@ -1,10 +1,16 @@
 {
   "name": "Multi-Container Dev Environment",
-  "dockerComposeFile": "./docker-compose.yml",  // Relative path
+  "dockerComposeFile": "./docker-compose.yml",
   "service": "api",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   
-  "forwardPorts": [5432, 8080],
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  
+  "forwardPorts": [5432, 8080, 3000],
   
   "postCreateCommand": "dotnet restore",
   
@@ -14,7 +20,9 @@
         "ms-dotnettools.csdevkit",
         "ms-dotnettools.csharp",
         "ms-azuretools.vscode-docker",
-        "ckolkman.vscode-postgres"
+        "ckolkman.vscode-postgres",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
       ]
     }
   },
