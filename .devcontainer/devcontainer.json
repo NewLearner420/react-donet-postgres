@@ -1,0 +1,26 @@
+{
+  "name": "Multi-Container Dev Environment",
+  "dockerComposeFile": "./docker-compose.yml",  // Relative path
+  "service": "api",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  
+  "forwardPorts": [5432, 8080],
+  
+  "postCreateCommand": "dotnet restore",
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "ms-azuretools.vscode-docker",
+        "ckolkman.vscode-postgres"
+      ]
+    }
+  },
+  
+  "remoteEnv": {
+    "DATABASE_URL": "Host=db;Port=5432;Database=crud_users_db;Username=user_name;Password=my_secure_password",
+    "ASPNETCORE_ENVIRONMENT": "Development"
+  }
+}

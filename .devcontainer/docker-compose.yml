@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user_name
+      POSTGRES_PASSWORD: my_secure_password
+      POSTGRES_DB: crud_users_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_name -d crud_users_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    image: react-donet-postgres-api:dev
+    container_name: graphql_api
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=crud_users_db;Username=user_name;Password=my_secure_password"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ..:/workspaces/react-donet-postgres
+      - nuget-packages:/root/.nuget/packages
+    working_dir: /workspaces/react-donet-postgres
+    command: sleep infinity
+
+volumes:
+  postgres_data:
+  nuget-packages:
+
+networks:
+  app-network:
+    driver: bridge
