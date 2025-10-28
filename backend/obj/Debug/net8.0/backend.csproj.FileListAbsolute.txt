@@ -127,3 +127,7 @@
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/backend.pdb
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/backend.genruntimeconfig.cache
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/ref/backend.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/HotChocolate.PersistedQueries.Redis.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/HotChocolate.Subscriptions.Redis.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Pipelines.Sockets.Unofficial.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/StackExchange.Redis.dll

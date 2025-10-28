@@ -10,8 +10,12 @@
         "dependencies": {
           "HotChocolate.AspNetCore": "13.9.0",
           "HotChocolate.Data.EntityFramework": "13.9.0",
+          "HotChocolate.PersistedQueries.Redis": "13.9.0",
+          "HotChocolate.Subscriptions.InMemory": "13.9.0",
+          "HotChocolate.Subscriptions.Redis": "13.9.0",
           "Microsoft.EntityFrameworkCore.Design": "8.0.4",
-          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.4"
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.4",
+          "StackExchange.Redis": "2.7.10"
         },
         "runtime": {
           "backend.dll": {}
@@ -217,6 +221,18 @@
           }
         }
       },
+      "HotChocolate.PersistedQueries.Redis/13.9.0": {
+        "dependencies": {
+          "HotChocolate": "13.9.0",
+          "StackExchange.Redis": "2.7.10"
+        },
+        "runtime": {
+          "lib/net8.0/HotChocolate.PersistedQueries.Redis.dll": {
+            "assemblyVersion": "13.9.0.0",
+            "fileVersion": "13.9.0.0"
+          }
+        }
+      },
       "HotChocolate.Subscriptions/13.9.0": {
         "dependencies": {
           "HotChocolate.Abstractions": "13.9.0",
@@ -237,6 +253,20 @@
         },
         "runtime": {
           "lib/net8.0/HotChocolate.Subscriptions.InMemory.dll": {
+            "assemblyVersion": "13.9.0.0",
+            "fileVersion": "13.9.0.0"
+          }
+        }
+      },
+      "HotChocolate.Subscriptions.Redis/13.9.0": {
+        "dependencies": {
+          "HotChocolate.Execution.Abstractions": "13.9.0",
+          "HotChocolate.Subscriptions": "13.9.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
+          "StackExchange.Redis": "2.7.10"
+        },
+        "runtime": {
+          "lib/net8.0/HotChocolate.Subscriptions.Redis.dll": {
             "assemblyVersion": "13.9.0.0",
             "fileVersion": "13.9.0.0"
           }
@@ -740,6 +770,29 @@
           }
         }
       },
+      "Pipelines.Sockets.Unofficial/2.2.8": {
+        "dependencies": {
+          "System.IO.Pipelines": "8.0.0"
+        },
+        "runtime": {
+          "lib/net5.0/Pipelines.Sockets.Unofficial.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "2.2.8.1080"
+          }
+        }
+      },
+      "StackExchange.Redis/2.7.10": {
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Pipelines.Sockets.Unofficial": "2.2.8"
+        },
+        "runtime": {
+          "lib/net6.0/StackExchange.Redis.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.7.10.12442"
+          }
+        }
+      },
       "System.CodeDom/4.4.0": {
         "runtime": {
           "lib/netstandard2.0/System.CodeDom.dll": {
@@ -970,6 +1023,13 @@
       "path": "hotchocolate.language.web/13.9.0",
       "hashPath": "hotchocolate.language.web.13.9.0.nupkg.sha512"
     },
+    "HotChocolate.PersistedQueries.Redis/13.9.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-wLwZGZVbzFXwJB1zdrA9qTJWVr7Pk6iry6XS1GLvmhmMk8q6gdhRT6ISNpHmRQioQ8YbA1hLvmOUBuTL0WwPyg==",
+      "path": "hotchocolate.persistedqueries.redis/13.9.0",
+      "hashPath": "hotchocolate.persistedqueries.redis.13.9.0.nupkg.sha512"
+    },
     "HotChocolate.Subscriptions/13.9.0": {
       "type": "package",
       "serviceable": true,
@@ -983,6 +1043,13 @@
       "sha512": "sha512-rj5U1Cd2QsjNnSNNdlSopYLtXh0kTZ1NlA1B3v02YFtj4Zu9le6QkGsl3oUljUUq46vSkkrT9ISj+e5wTCcw/Q==",
       "path": "hotchocolate.subscriptions.inmemory/13.9.0",
       "hashPath": "hotchocolate.subscriptions.inmemory.13.9.0.nupkg.sha512"
+    },
+    "HotChocolate.Subscriptions.Redis/13.9.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ucHAj79gmQ96vyJmrogyI33uxgY7tbUjZ41rfBnZeqsbDbkq8nkJbsT02jW2mepgTBNufzY3cc23iviIzy/+3g==",
+      "path": "hotchocolate.subscriptions.redis/13.9.0",
+      "hashPath": "hotchocolate.subscriptions.redis.13.9.0.nupkg.sha512"
     },
     "HotChocolate.Transport.Sockets/13.9.0": {
       "type": "package",
@@ -1235,6 +1302,20 @@
       "sha512": "sha512-/hHd9MqTRVDgIpsToCcxMDxZqla0HAQACiITkq1+L9J2hmHKV6lBAPlauF+dlNSfHpus7rrljWx4nAanKD6qAw==",
       "path": "npgsql.entityframeworkcore.postgresql/8.0.4",
       "hashPath": "npgsql.entityframeworkcore.postgresql.8.0.4.nupkg.sha512"
+    },
+    "Pipelines.Sockets.Unofficial/2.2.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ==",
+      "path": "pipelines.sockets.unofficial/2.2.8",
+      "hashPath": "pipelines.sockets.unofficial.2.2.8.nupkg.sha512"
+    },
+    "StackExchange.Redis/2.7.10": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DHC438nKZUbtJ0H8O5pCTMrurYy6ByUPhzUNAPCUADtI4BSyvASpWAquYjN+4NKEiKaW5AO++tgftum3tDraPQ==",
+      "path": "stackexchange.redis/2.7.10",
+      "hashPath": "stackexchange.redis.2.7.10.nupkg.sha512"
     },
     "System.CodeDom/4.4.0": {
       "type": "package",

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ejnQBArhwFw=",
+  "dgSpecHash": "D3hRJnRRzV4=",
   "success": true,
   "projectFilePath": "/workspaces/react-donet-postgres/backend/backend.csproj",
   "expectedPackageFiles": [
@@ -20,8 +20,10 @@
     "/home/codespace/.nuget/packages/hotchocolate.language.utf8/13.9.0/hotchocolate.language.utf8.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.language.visitors/13.9.0/hotchocolate.language.visitors.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.language.web/13.9.0/hotchocolate.language.web.13.9.0.nupkg.sha512",
+    "/home/codespace/.nuget/packages/hotchocolate.persistedqueries.redis/13.9.0/hotchocolate.persistedqueries.redis.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.subscriptions/13.9.0/hotchocolate.subscriptions.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.subscriptions.inmemory/13.9.0/hotchocolate.subscriptions.inmemory.13.9.0.nupkg.sha512",
+    "/home/codespace/.nuget/packages/hotchocolate.subscriptions.redis/13.9.0/hotchocolate.subscriptions.redis.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.transport.sockets/13.9.0/hotchocolate.transport.sockets.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.types/13.9.0/hotchocolate.types.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.types.cursorpagination/13.9.0/hotchocolate.types.cursorpagination.13.9.0.nupkg.sha512",
@@ -58,6 +60,8 @@
     "/home/codespace/.nuget/packages/mono.texttemplating/2.2.1/mono.texttemplating.2.2.1.nupkg.sha512",
     "/home/codespace/.nuget/packages/npgsql/8.0.3/npgsql.8.0.3.nupkg.sha512",
     "/home/codespace/.nuget/packages/npgsql.entityframeworkcore.postgresql/8.0.4/npgsql.entityframeworkcore.postgresql.8.0.4.nupkg.sha512",
+    "/home/codespace/.nuget/packages/pipelines.sockets.unofficial/2.2.8/pipelines.sockets.unofficial.2.2.8.nupkg.sha512",
+    "/home/codespace/.nuget/packages/stackexchange.redis/2.7.10/stackexchange.redis.2.7.10.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.codedom/4.4.0/system.codedom.4.4.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.collections.immutable/8.0.0/system.collections.immutable.8.0.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.componentmodel.annotations/5.0.0/system.componentmodel.annotations.5.0.0.nupkg.sha512",

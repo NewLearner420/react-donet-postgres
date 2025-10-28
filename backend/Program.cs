@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.GraphQL;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,14 +17,23 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     )
 );
 
+// Add Redis
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+
 // Add GraphQL with HotChocolate
 builder.Services
     .AddGraphQLServer()
     .AddQueryType<Query>()
     .AddMutationType<Mutation>()
-    .AddProjections()
+    .AddSubscriptionType<Subscription>()
+    .AddType<UserType>()
+    // Add filtering, sorting, and projections
     .AddFiltering()
-    .AddSorting();
+    .AddSorting()
+    .AddProjections()
+    // Use Redis for subscriptions (production-ready, scales across multiple instances)
+    .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>());
 
 // Add CORS
 builder.Services.AddCors(options =>

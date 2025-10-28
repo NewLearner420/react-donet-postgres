@@ -1,19 +1,80 @@
-using backend.Data;
-using backend.Models;
+using Microsoft.EntityFrameworkCore;
 using HotChocolate.Data;
+using StackExchange.Redis;
+using System.Text.Json;
+using backend.Models;
+using backend.Data;
 
 namespace backend.GraphQL;
 
 public class Query
 {
+    // Get all users with filtering, sorting, and caching
     [UseProjection]
     [UseFiltering]
     [UseSorting]
     public IQueryable<User> GetUsers([Service] ApplicationDbContext context)
-        => context.Users;
+    {
+        return context.Users;
+    }
 
-    [UseFirstOrDefault]
-    [UseProjection]
-    public IQueryable<User> GetUser([Service] ApplicationDbContext context, int id)
-        => context.Users.Where(u => u.Id == id);
+    // Get user by ID with Redis caching
+    public async Task<User?> GetUserById(
+        int id,
+        [Service] ApplicationDbContext context,
+        [Service] IConnectionMultiplexer redis,
+        CancellationToken cancellationToken)
+    {
+        var db = redis.GetDatabase();
+        var cacheKey = $"user:{id}";
+
+        // Try to get from cache
+        var cachedUser = await db.StringGetAsync(cacheKey);
+
+        if (!cachedUser.IsNullOrEmpty)
+        {
+            return JsonSerializer.Deserialize<User>(cachedUser!);
+        }
+
+        // If not in cache, get from database
+        var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
+
+        // Cache the result for 5 minutes
+        if (user != null)
+        {
+            var serializedUser = JsonSerializer.Serialize(user);
+            await db.StringSetAsync(cacheKey, serializedUser, TimeSpan.FromMinutes(5));
+        }
+
+        return user;
+    }
+
+    // Get user by email with caching
+    public async Task<User?> GetUserByEmail(
+        string email,
+        [Service] ApplicationDbContext context,
+        [Service] IConnectionMultiplexer redis,
+        CancellationToken cancellationToken)
+    {
+        var db = redis.GetDatabase();
+        var cacheKey = $"user:email:{email}";
+
+        var cachedUser = await db.StringGetAsync(cacheKey);
+
+        if (!cachedUser.IsNullOrEmpty)
+        {
+            return JsonSerializer.Deserialize<User>(cachedUser!);
+        }
+
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+        if (user != null)
+        {
+            var serializedUser = JsonSerializer.Serialize(user);
+            await db.StringSetAsync(cacheKey, serializedUser, TimeSpan.FromMinutes(5));
+        }
+
+        return user;
+    }
 }
