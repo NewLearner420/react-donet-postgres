@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: user_name
+      POSTGRES_PASSWORD: my_secure_password
+      POSTGRES_DB: crud_users_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_name -d crud_users_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: react-dotnet-postgres-api:dev
+    container_name: graphql_api
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=crud_users_db;Username=user_name;Password=my_secure_password"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./backend:/app
+      - nuget-packages:/root/.nuget/packages
+    working_dir: /app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: react-dotnet-postgres-frontend:dev
+    container_name: react_frontend
+    environment:
+      - REACT_APP_GRAPHQL_URI=http://api:8080/graphql
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    working_dir: /app
+    stdin_open: true
+    tty: true
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    
+volumes:
+  postgres_data:
+  nuget-packages:
+  redis-data:
+
+networks:
+  app-network:
+    driver: bridge

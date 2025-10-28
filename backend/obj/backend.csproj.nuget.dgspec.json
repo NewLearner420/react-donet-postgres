@@ -10,11 +10,11 @@
         "projectUniqueName": "/workspaces/react-donet-postgres/backend/backend.csproj",
         "projectName": "backend",
         "projectPath": "/workspaces/react-donet-postgres/backend/backend.csproj",
-        "packagesPath": "/root/.nuget/packages/",
+        "packagesPath": "/home/codespace/.nuget/packages/",
         "outputPath": "/workspaces/react-donet-postgres/backend/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "/home/codespace/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -81,7 +81,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.415/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/8.0.412/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
