@@ -3,6 +3,7 @@ using backend.Data;
 using backend.GraphQL;
 using StackExchange.Redis;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add DbContext with PostgreSQL
@@ -34,6 +35,7 @@ builder.Services
     .AddProjections()
     // Use Redis for subscriptions (production-ready, scales across multiple instances)
     .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>());
+
 
 // Add CORS
 builder.Services.AddCors(options =>

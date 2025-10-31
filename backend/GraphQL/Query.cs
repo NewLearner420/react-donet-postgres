@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using HotChocolate;
 using HotChocolate.Data;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -19,6 +20,7 @@ public class Query
     }
 
     // Get user by ID with Redis caching
+    [GraphQLName("userById")]  // Add this
     public async Task<User?> GetUserById(
         int id,
         [Service] ApplicationDbContext context,
@@ -39,7 +41,7 @@ public class Query
         // If not in cache, get from database
         var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
 
-        // Cache the result for 5 minutes
+        //Cache the result for 5 minutes
         if (user != null)
         {
             var serializedUser = JsonSerializer.Serialize(user);
@@ -50,6 +52,7 @@ public class Query
     }
 
     // Get user by email with caching
+    [GraphQLName("userByEmail")]  // Add this for consistency
     public async Task<User?> GetUserByEmail(
         string email,
         [Service] ApplicationDbContext context,
