@@ -2,26 +2,57 @@ using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.GraphQL;
 using StackExchange.Redis;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Get connection strings from environment variables
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? "localhost:6379";
+// Get DATABASE_URL
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL") 
+                  ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-Console.WriteLine($"🔍 DATABASE_URL exists: {!string.IsNullOrEmpty(databaseUrl)}");
-Console.WriteLine($"🔍 REDIS_URL exists: {!string.IsNullOrEmpty(redisUrl)}");
+Console.WriteLine($"🔍 DATABASE_URL exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"))}");
 
-if (string.IsNullOrEmpty(databaseUrl))
+string connectionString;
+
+// Convert postgres:// URL to Npgsql connection string format
+if (!string.IsNullOrEmpty(databaseUrl) && (databaseUrl.StartsWith("postgres://") || databaseUrl.StartsWith("postgresql://")))
 {
-    Console.WriteLine("❌ DATABASE_URL not found! Application will fail.");
-    throw new InvalidOperationException("DATABASE_URL environment variable is required");
+    try
+    {
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        
+        Console.WriteLine("✅ Converted DATABASE_URL to Npgsql format");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Failed to parse DATABASE_URL: {ex.Message}");
+        throw;
+    }
 }
+else
+{
+    connectionString = databaseUrl;
+    Console.WriteLine("✅ Using connection string as-is");
+}
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Database connection string not found");
+}
+
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") 
+               ?? builder.Configuration.GetConnectionString("Redis") 
+               ?? "localhost:6379";
+
+Console.WriteLine($"🔍 REDIS_URL exists: {!string.IsNullOrEmpty(redisUrl)}");
 
 // Add DbContext with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
-        databaseUrl,
+        connectionString,
         npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(10),
