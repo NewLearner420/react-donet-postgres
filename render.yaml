@@ -19,7 +19,6 @@ services:
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    healthCheckPath: /health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -39,14 +38,6 @@ services:
     dockerContext: ./frontend
     envVars:
       - key: VITE_GRAPHQL_HTTP_URL
-        fromService:
-          type: web
-          name: graphql-api
-          envVarKey: RENDER_EXTERNAL_URL
-          property: host
+        sync: false
       - key: VITE_GRAPHQL_WS_URL
-        fromService:
-          type: web
-          name: graphql-api
-          envVarKey: RENDER_EXTERNAL_URL
-          property: host
+        sync: false
