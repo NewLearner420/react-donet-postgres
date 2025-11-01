@@ -1,24 +1,21 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: postgres-db
-    env: docker
+databases:
+  - name: postgres-db
+    databaseName: crud_users_db
+    user: user_name
     plan: free
-    region: oregon
-    
+
+services:
   # Redis Cache
   - type: redis
     name: redis-cache
     plan: free
-    region: oregon
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
   # Backend API
   - type: web
     name: graphql-api
-    env: docker
-    region: oregon
+    runtime: docker
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -32,29 +29,24 @@ services:
         fromDatabase:
           name: postgres-db
           property: connectionString
-      - key: REDIS_CONNECTION_STRING
-        fromService:
-          type: redis
-          name: redis-cache
-          property: connectionString
 
   # Frontend
   - type: web
     name: react-frontend
-    env: docker
-    region: oregon
+    runtime: docker
     plan: free
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
     envVars:
       - key: VITE_GRAPHQL_HTTP_URL
-        value: https://graphql-api.onrender.com/graphql
+        fromService:
+          type: web
+          name: graphql-api
+          envVarKey: RENDER_EXTERNAL_URL
+          property: host
       - key: VITE_GRAPHQL_WS_URL
-        value: wss://graphql-api.onrender.com/graphql
-
-databases:
-  - name: postgres-db
-    databaseName: crud_users_db
-    user: user_name
-    plan: free
-    region: oregon
+        fromService:
+          type: web
+          name: graphql-api
+          envVarKey: RENDER_EXTERNAL_URL
+          property: host
