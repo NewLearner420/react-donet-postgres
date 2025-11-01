@@ -3,13 +3,25 @@ using backend.Data;
 using backend.GraphQL;
 using StackExchange.Redis;
 
-
 var builder = WebApplication.CreateBuilder(args);
+
+// Get connection strings from environment variables
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? "localhost:6379";
+
+Console.WriteLine($"🔍 DATABASE_URL exists: {!string.IsNullOrEmpty(databaseUrl)}");
+Console.WriteLine($"🔍 REDIS_URL exists: {!string.IsNullOrEmpty(redisUrl)}");
+
+if (string.IsNullOrEmpty(databaseUrl))
+{
+    Console.WriteLine("❌ DATABASE_URL not found! Application will fail.");
+    throw new InvalidOperationException("DATABASE_URL environment variable is required");
+}
 
 // Add DbContext with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        databaseUrl,
         npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(10),
@@ -20,7 +32,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379"));
+    ConnectionMultiplexer.Connect(redisUrl));
 
 // Add GraphQL with HotChocolate
 builder.Services
@@ -29,13 +41,10 @@ builder.Services
     .AddMutationType<Mutation>()
     .AddSubscriptionType<Subscription>()
     .AddType<UserType>()
-    // Add filtering, sorting, and projections
     .AddFiltering()
     .AddSorting()
     .AddProjections()
-    // Use Redis for subscriptions (production-ready, scales across multiple instances)
     .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>());
-
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -57,12 +66,14 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("🔄 Applying database migrations...");
         context.Database.Migrate();
         Console.WriteLine("✅ Database migrations applied successfully.");
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ An error occurred while migrating the database: {ex.Message}");
+        Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
     }
 }
 
@@ -72,4 +83,5 @@ app.MapGraphQL();
 
 app.MapGet("/", () => Results.Redirect("/graphql"));
 
+Console.WriteLine("🚀 Application starting...");
 app.Run();
