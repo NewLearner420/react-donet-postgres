@@ -28,6 +28,11 @@ services:
         fromDatabase:
           name: postgres-db
           property: connectionString
+      - key: ConnectionStrings__Redis
+        fromService:
+          name: redis-cache
+          type: redis
+          property: connectionString
 
   # Frontend
   - type: web
@@ -36,8 +41,6 @@ services:
     plan: free
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
-    envVars:
-      - key: VITE_GRAPHQL_HTTP_URL
-        sync: false
-      - key: VITE_GRAPHQL_WS_URL
-        sync: false
+    buildFilter:
+      paths:
+        - frontend/**
