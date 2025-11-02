@@ -75,8 +75,11 @@ builder.Services
     .AddFiltering()
     .AddSorting()
     .AddProjections()
-    .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>());
-
+    .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>())
+.ModifyRequestOptions(opt => 
+    {
+        opt.IncludeExceptionDetails = true; // ADD THIS LINE
+    });
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -113,6 +116,21 @@ app.UseWebSockets();
 app.MapGraphQL();
 
 app.MapGet("/", () => Results.Redirect("/graphql"));
+
+// In Program.cs after var app = builder.Build();
+app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
+{
+    try
+    {
+        var db = redis.GetDatabase();
+        await db.PingAsync();
+        return Results.Ok("Redis connected");
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Redis error: {ex.Message}");
+    }
+});
 
 Console.WriteLine("🚀 Application starting...");
 app.Run();

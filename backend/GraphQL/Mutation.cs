@@ -8,13 +8,18 @@ namespace backend.GraphQL;
 public class Mutation
 {
     // Create user
-    public async Task<User> CreateUser(
-        string name,
-        string email,
-        [Service] ApplicationDbContext context,
-        [Service] ITopicEventSender eventSender,
-        CancellationToken cancellationToken)
+   public async Task<User> CreateUser(
+    string name,
+    string email,
+    [Service] ApplicationDbContext context,
+    [Service] ITopicEventSender eventSender,
+    [Service] ILogger<Mutation> logger, // ADD THIS
+    CancellationToken cancellationToken)
+{
+    try
     {
+        logger.LogInformation("Creating user: {Name}, {Email}", name, email);
+        
         var user = new User
         {
             Name = name,
@@ -23,14 +28,24 @@ public class Mutation
         };
 
         context.Users.Add(user);
+        logger.LogInformation("Saving to database...");
         await context.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("User saved with ID: {Id}", user.Id);
 
         // Trigger subscription
+        logger.LogInformation("Sending subscription events...");
         await eventSender.SendAsync(nameof(Subscription.OnUserCreated), user, cancellationToken);
         await eventSender.SendAsync(nameof(Subscription.OnUserChanged), user, cancellationToken);
+        logger.LogInformation("Subscription events sent");
 
         return user;
     }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error creating user");
+        throw;
+    }
+}
 
     // Update user
     public async Task<User?> UpdateUser(
