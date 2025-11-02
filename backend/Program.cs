@@ -43,12 +43,6 @@ if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("Database connection string not found");
 }
 
-var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") 
-               ?? builder.Configuration.GetConnectionString("Redis") 
-               ?? "localhost:6379";
-
-Console.WriteLine($"🔍 REDIS_URL exists: {!string.IsNullOrEmpty(redisUrl)}");
-
 // Add DbContext with PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(
@@ -61,9 +55,40 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     )
 );
 
-// Add Redis
+var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") 
+               ?? builder.Configuration.GetConnectionString("Redis") 
+               ?? "localhost:6379";
+
+// Remove redis:// prefix if present
+if (redisUrl.StartsWith("redis://"))
+{
+    redisUrl = redisUrl.Substring("redis://".Length);
+}
+
+Console.WriteLine($"🔍 Connecting to Redis: {redisUrl}");
+
+// Add Redis with retry and timeout settings
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(redisUrl));
+{
+    try
+    {
+        var configOptions = ConfigurationOptions.Parse(redisUrl);
+        configOptions.AbortOnConnectFail = false; // Don't crash on startup
+        configOptions.ConnectTimeout = 10000; // 10 seconds
+        configOptions.SyncTimeout = 5000;
+        configOptions.ConnectRetry = 3;
+        configOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
+        
+        var redis = ConnectionMultiplexer.Connect(configOptions);
+        Console.WriteLine("✅ Redis connected successfully");
+        return redis;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Redis connection failed: {ex.Message}");
+        throw;
+    }
+});
 
 // Add GraphQL with HotChocolate
 builder.Services
