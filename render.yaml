@@ -4,6 +4,11 @@ databases:
     user: user_name
     plan: free
 
+  - name: keycloak-db
+    databaseName: keycloak_db
+    user: keycloak
+    plan: free
+
 services:
   # Redis Cache
   - type: redis
@@ -12,13 +17,58 @@ services:
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
-  # Backend API
+  # Keycloak Authentication Server
+  - type: web
+    name: keycloak
+    runtime: docker
+    plan: free
+    dockerfilePath: ./keycloak/Dockerfile
+    dockerContext: ./keycloak
+    healthCheckPath: /health/ready
+    envVars:
+      - key: KC_DB
+        value: postgres
+      - key: KC_DB_URL_HOST
+        fromDatabase:
+          name: keycloak-db
+          property: host
+      - key: KC_DB_URL_PORT
+        fromDatabase:
+          name: keycloak-db
+          property: port
+      - key: KC_DB_URL_DATABASE
+        fromDatabase:
+          name: keycloak-db
+          property: database
+      - key: KC_DB_USERNAME
+        fromDatabase:
+          name: keycloak-db
+          property: user
+      - key: KC_DB_PASSWORD
+        fromDatabase:
+          name: keycloak-db
+          property: password
+      - key: KEYCLOAK_ADMIN
+        value: admin
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        generateValue: true
+      - key: KC_HOSTNAME_STRICT
+        value: "false"
+      - key: KC_HTTP_ENABLED
+        value: "true"
+      - key: KC_PROXY
+        value: edge
+      - key: KC_HEALTH_ENABLED
+        value: "true"
+
+  # Backend GraphQL API
   - type: web
     name: graphql-api
     runtime: docker
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    healthCheckPath: /health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
@@ -33,14 +83,88 @@ services:
           name: redis-cache
           type: redis
           property: connectionString
+      - key: Keycloak__Authority
+        sync: false
+      - key: Keycloak__MetadataAddress
+        sync: false
+      - key: Keycloak__Audience
+        value: graphql-api
+      - key: Keycloak__RequireHttpsMetadata
+        value: "false"
+      - key: Keycloak__ValidateIssuer
+        value: "true"
+      - key: Cors__AllowedOrigins__0
+        sync: false
+      - key: Cors__AllowedOrigins__1
+        value: http://localhost:3000
 
-  # Frontend
+  # Frontend React App
   - type: web
     name: react-frontend
     runtime: docker
     plan: free
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
-    buildFilter:
-      paths:
-        - frontend/**
+    healthCheckPath: /health
+    envVars:
+      - key: VITE_GRAPHQL_HTTP_URL
+        sync: false
+      - key: VITE_GRAPHQL_WS_URL
+        sync: false
+      - key: VITE_KEYCLOAK_URL
+        sync: false
+      - key: VITE_KEYCLOAK_REALM
+        value: myrealm
+      - key: VITE_KEYCLOAK_CLIENT_ID
+        value: react-app
+```
+
+### 5. Create `.dockerignore` Files
+
+Create `backend/.dockerignore`:
+```
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.log
+appsettings.Development.json
+```
+
+Create `frontend/.dockerignore`:
+```
+node_modules/
+.git/
+.gitignore
+README.md
+.env
+.env.local
+dist/
+build/
+.vscode/
+.idea/
+```
+
+### 6. Verify Your Project Structure
+
+Your structure should now look like this:
+```
+react-dotnet-postgres/
+├── backend/
+│   ├── .dockerignore
+│   ├── Dockerfile
+│   ├── backend.csproj
+│   ├── Program.cs
+│   └── ... (other files)
+├── frontend/
+│   ├── .dockerignore
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── ... (other files)
+├── keycloak/
+│   └── Dockerfile
+├── render.yaml
+└── README.md
