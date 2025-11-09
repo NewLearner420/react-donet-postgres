@@ -263,3 +263,12 @@
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/backend.pdb
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/backend.genruntimeconfig.cache
 /workspaces/react-donet-postgres/backend/obj/Debug/net8.0/ref/backend.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.Bcl.TimeProvider.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.Abstractions.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.JsonWebTokens.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.Logging.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/Microsoft.IdentityModel.Tokens.dll
+/workspaces/react-donet-postgres/backend/bin/Debug/net8.0/System.IdentityModel.Tokens.Jwt.dll

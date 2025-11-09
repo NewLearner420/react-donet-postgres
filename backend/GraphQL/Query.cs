@@ -5,6 +5,7 @@ using StackExchange.Redis;
 using System.Text.Json;
 using backend.Models;
 using backend.Data;
+using HotChocolate.Authorization;
 
 namespace backend.GraphQL;
 
@@ -14,18 +15,21 @@ public class Query
     [UseProjection]
     [UseFiltering]
     [UseSorting]
+    [Authorize]
     public IQueryable<User> GetUsers([Service] ApplicationDbContext context)
     {
         return context.Users;
     }
 
+
     // Get user by ID with Redis caching
     [GraphQLName("userById")]  // Add this
+    [Authorize]
     public async Task<User?> GetUserById(
-        int id,
-        [Service] ApplicationDbContext context,
-        [Service] IConnectionMultiplexer redis,
-        CancellationToken cancellationToken)
+                    int id,
+                            [Service] ApplicationDbContext context,
+                                    [Service] IConnectionMultiplexer redis,
+                                            CancellationToken cancellationToken)
     {
         var db = redis.GetDatabase();
         var cacheKey = $"user:{id}";
@@ -53,11 +57,12 @@ public class Query
 
     // Get user by email with caching
     [GraphQLName("userByEmail")]  // Add this for consistency
+    [Authorize]
     public async Task<User?> GetUserByEmail(
-        string email,
-        [Service] ApplicationDbContext context,
-        [Service] IConnectionMultiplexer redis,
-        CancellationToken cancellationToken)
+                    string email,
+                            [Service] ApplicationDbContext context,
+                                    [Service] IConnectionMultiplexer redis,
+                                            CancellationToken cancellationToken)
     {
         var db = redis.GetDatabase();
         var cacheKey = $"user:email:{email}";
@@ -70,7 +75,7 @@ public class Query
         }
 
         var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+                    .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (user != null)
         {

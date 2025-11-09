@@ -3,6 +3,10 @@ using backend.Data;
 using backend.GraphQL;
 using StackExchange.Redis;
 using System;
+using HotChocolate.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using backend.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,12 +77,12 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     try
     {
         var configOptions = ConfigurationOptions.Parse(redisUrl);
-        configOptions.AbortOnConnectFail = false; // Don't crash on startup
-        configOptions.ConnectTimeout = 10000; // 10 seconds
+        configOptions.AbortOnConnectFail = false;
+        configOptions.ConnectTimeout = 10000;
         configOptions.SyncTimeout = 5000;
         configOptions.ConnectRetry = 3;
         configOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
-        
+
         var redis = ConnectionMultiplexer.Connect(configOptions);
         Console.WriteLine("✅ Redis connected successfully");
         return redis;
@@ -90,6 +94,79 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     }
 });
 
+// Configure Keycloak settings
+var keycloakSettings = builder.Configuration
+    .GetSection("Keycloak")
+    .Get<KeycloakSettings>();
+    
+if (keycloakSettings == null)
+{
+    throw new InvalidOperationException("Keycloak configuration is missing in appsettings.json");
+}
+
+builder.Services.AddSingleton(keycloakSettings);
+
+// CORS Configuration
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? new[]
+    {
+        "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-3000.app.github.dev",
+        "http://localhost:3000"
+    };
+
+Console.WriteLine($"🔍 Configured CORS origins: {string.Join(", ", allowedOrigins)}");
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials()
+              .WithExposedHeaders("Content-Disposition")
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+});
+
+// Add JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = keycloakSettings.Authority;
+        options.Audience = keycloakSettings.Audience;
+        options.RequireHttpsMetadata = false; // Important for Codespaces
+        
+        // Explicitly set metadata address
+        options.MetadataAddress = $"{keycloakSettings.Authority}/.well-known/openid-configuration";
+        
+        // Configure HTTP handler for certificate validation
+        options.BackchannelHttpHandler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+        };
+        
+        options.BackchannelTimeout = TimeSpan.FromSeconds(30);
+        options.SaveToken = false;
+        options.IncludeErrorDetails = true;
+
+options.TokenValidationParameters = new TokenValidationParameters
+{
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+    ValidateIssuerSigningKey = true,
+    // Accept both internal and external issuer
+    ValidIssuers = new[]
+    {
+        "http://keycloak:8080/realms/myrealm",
+        "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev/realms/myrealm"
+    },
+    ValidAudience = keycloakSettings.Audience,
+    ClockSkew = TimeSpan.FromMinutes(5)
+};
+            
 // Add GraphQL with HotChocolate
 builder.Services
     .AddGraphQLServer()
@@ -100,21 +177,12 @@ builder.Services
     .AddFiltering()
     .AddSorting()
     .AddProjections()
+    .AddAuthorization()
     .AddRedisSubscriptions(sp => sp.GetRequiredService<IConnectionMultiplexer>())
-.ModifyRequestOptions(opt => 
+    .ModifyRequestOptions(opt =>
     {
-        opt.IncludeExceptionDetails = true; // ADD THIS LINE
+        opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
     });
-// Add CORS
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-         policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
 
 var app = builder.Build();
 
@@ -136,20 +204,136 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Middleware Pipeline - ORDER IS CRITICAL
+// 1. CORS must be first
 app.UseCors();
+
+// 2. WebSockets
 app.UseWebSockets();
+
+// 3. CORS preflight debug middleware
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        Console.WriteLine($"🔍 OPTIONS (preflight) request to: {context.Request.Path}");
+        Console.WriteLine($"🔍 Origin: {context.Request.Headers["Origin"]}");
+        Console.WriteLine($"🔍 Access-Control-Request-Method: {context.Request.Headers["Access-Control-Request-Method"]}");
+        Console.WriteLine($"🔍 Access-Control-Request-Headers: {context.Request.Headers["Access-Control-Request-Headers"]}");
+    }
+    
+    await next();
+    
+    if (context.Request.Method == "OPTIONS")
+    {
+        Console.WriteLine($"✅ OPTIONS response status: {context.Response.StatusCode}");
+        Console.WriteLine($"✅ Access-Control-Allow-Origin: {context.Response.Headers["Access-Control-Allow-Origin"]}");
+        Console.WriteLine($"✅ Access-Control-Allow-Credentials: {context.Response.Headers["Access-Control-Allow-Credentials"]}");
+    }
+});
+
+// 4. Request logging middleware
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/graphql") && context.Request.Method == "POST")
+    {
+        var authHeader = context.Request.Headers["Authorization"].ToString();
+        Console.WriteLine($"🔍 POST /graphql request");
+        Console.WriteLine($"🔍 Auth Header Present: {!string.IsNullOrEmpty(authHeader)}");
+        
+        if (!string.IsNullOrEmpty(authHeader) && authHeader.Length > 20)
+        {
+            Console.WriteLine($"🔍 Auth Header (truncated): {authHeader.Substring(0, Math.Min(70, authHeader.Length))}...");
+        }
+    }
+
+    await next();
+});
+
+// 5. Authentication/Authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 6. Map endpoints
 app.MapGraphQL();
+
+// Debug endpoint to inspect token
+app.MapPost("/debug-token", async (HttpContext context) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].ToString();
+    
+    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+    {
+        return Results.BadRequest(new { error = "No bearer token provided" });
+    }
+    
+    var token = authHeader.Substring(7).Trim();
+    
+    // Detailed token analysis
+    var bytes = System.Text.Encoding.UTF8.GetBytes(token);
+    var hasNonAscii = bytes.Any(b => b > 127);
+    var hasControlChars = token.Any(c => char.IsControl(c));
+    
+    var dotCount = token.Count(c => c == '.');
+    var dotPositions = new List<int>();
+    for (int i = 0; i < token.Length; i++)
+    {
+        if (token[i] == '.') dotPositions.Add(i);
+    }
+    
+    return Results.Ok(new
+    {
+        tokenLength = token.Length,
+        dotCount = dotCount,
+        dotPositions = dotPositions,
+        hasNonAscii = hasNonAscii,
+        hasControlChars = hasControlChars,
+        firstDotCharCode = dotCount > 0 ? (int)token[dotPositions[0]] : 0,
+        secondDotCharCode = dotCount > 1 ? (int)token[dotPositions[1]] : 0,
+        first50Chars = token.Substring(0, Math.Min(50, token.Length)),
+        around1stDot = dotCount > 0 && dotPositions[0] >= 5 
+            ? token.Substring(dotPositions[0] - 5, Math.Min(11, token.Length - (dotPositions[0] - 5))) 
+            : "",
+        around2ndDot = dotCount > 1 && dotPositions[1] >= 5 
+            ? token.Substring(dotPositions[1] - 5, Math.Min(11, token.Length - (dotPositions[1] - 5))) 
+            : "",
+        parts = token.Split('.').Select(p => new { length = p.Length, preview = p.Substring(0, Math.Min(20, p.Length)) }).ToArray()
+    });
+}).AllowAnonymous();
+
+app.MapPost("/test-token", async (HttpContext context) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].ToString();
+    Console.WriteLine($"🧪 Test endpoint - Auth header received");
+    
+    if (authHeader.StartsWith("Bearer "))
+    {
+        var token = authHeader.Substring(7).Trim();
+        Console.WriteLine($"🧪 Token length: {token.Length}");
+        Console.WriteLine($"🧪 Token has dots: {token.Contains('.')}");
+        Console.WriteLine($"🧪 Token dot count: {token.Count(c => c == '.')}");
+        Console.WriteLine($"🧪 First 100 chars: {token.Substring(0, Math.Min(100, token.Length))}");
+        
+        return Results.Ok(new { 
+            length = token.Length,
+            hasDots = token.Contains('.'),
+            dotCount = token.Count(c => c == '.'),
+            preview = token.Substring(0, Math.Min(50, token.Length))
+        });
+    }
+    
+    return Results.BadRequest("No bearer token");
+}).AllowAnonymous();
 
 app.MapGet("/", () => Results.Redirect("/graphql"));
 
-// In Program.cs after var app = builder.Build();
 app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
 {
     try
     {
         var db = redis.GetDatabase();
         await db.PingAsync();
-        return Results.Ok("Redis connected");
+        return Results.Ok(new { status = "healthy", service = "redis" });
     }
     catch (Exception ex)
     {
@@ -157,5 +341,19 @@ app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
     }
 });
 
+app.MapGet("/health", () => Results.Ok(new 
+{ 
+    status = "healthy", 
+    timestamp = DateTime.UtcNow,
+    environment = app.Environment.EnvironmentName
+}));
+
 Console.WriteLine("🚀 Application starting...");
+Console.WriteLine($"🌐 Environment: {app.Environment.EnvironmentName}");
+Console.WriteLine($"🔒 HTTPS Metadata Required: {keycloakSettings.RequireHttpsMetadata}");
+Console.WriteLine($"🔑 Keycloak Authority: {keycloakSettings.Authority}");
+Console.WriteLine($"🎯 Expected Audience: {keycloakSettings.Audience}");
+Console.WriteLine($"📍 GraphQL endpoint: /graphql");
+Console.WriteLine($"🔍 Debug endpoint: POST /debug-token");
+
 app.Run();

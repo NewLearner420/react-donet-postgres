@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     container_name: postgres_db
     environment:
-      POSTGRES_USER: user_name
-      POSTGRES_PASSWORD: my_secure_password
-      POSTGRES_DB: crud_users_db
+      POSTGRES_USER: ${POSTGRES_USER:-user_name}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-my_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-crud_users_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -16,63 +14,59 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_name -d crud_users_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user_name} -d ${POSTGRES_DB:-crud_users_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: react-dotnet-postgres-api:dev
-    container_name: graphql_api
+  keycloak-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    container_name: keycloak_db
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=crud_users_db;Username=user_name;Password=my_secure_password"
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: "http://+:8080"
-      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+      POSTGRES_DB: keycloak_db
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak_db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+      KC_PROXY: edge
+      KC_HEALTH_ENABLED: true
+      KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI: true  
     ports:
-      - "8080:8080"
+      - "8090:8080"
     depends_on:
-      db:
+      keycloak-db:
         condition: service_healthy
     networks:
       - app-network
-    volumes:
-      - ./backend:/app
-      - nuget-packages:/root/.nuget/packages
-    working_dir: /app
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: development
-    image: react-dotnet-postgres-frontend
-    container_name: react_frontend
-    environment:
-      # Updated to use port 8080 where API actually runs
-      # - VITE_GRAPHQL_HTTP_URL=http://api:8080/graphql
-      # - VITE_GRAPHQL_WS_URL=ws://api:8080/graphql
-      - CHOKIDAR_USEPOLLING=true
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-    networks:
-      - app-network
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    working_dir: /app
-    stdin_open: true
-    tty: true
-    command: npm run dev
-
+  
   redis:
     image: redis:7-alpine
     container_name: redis_cache
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -85,9 +79,73 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: react-dotnet-postgres-api:dev
+    container_name: graphql_api
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-crud_users_db};Username=${POSTGRES_USER:-user_name};Password=${POSTGRES_PASSWORD:-my_secure_password}"
+      ConnectionStrings__Redis: "redis:6379"
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:8080"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      # FIXED: Use internal Docker network URL for Keycloak
+      Keycloak__Authority: "http://keycloak:8080/realms/myrealm"
+      Keycloak__MetadataAddress: "http://keycloak:8080/realms/myrealm/.well-known/openid-configuration"
+      Keycloak__Audience: "graphql-api"
+      Keycloak__RequireHttpsMetadata: "false"
+      Keycloak__ValidateIssuer: "false"
+      # Add the external issuer for token validation
+      Keycloak__ExternalAuthority: "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev/realms/myrealm"
+      Cors__AllowedOrigins__0: "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-3000.app.github.dev"
+      Cors__AllowedOrigins__1: "http://localhost:3000"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - nuget-packages:/root/.nuget/packages
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    image: react-dotnet-postgres-frontend
+    container_name: react_frontend
+    restart: unless-stopped
+    environment:
+      - VITE_GRAPHQL_HTTP_URL=https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8080.app.github.dev/graphql
+      - VITE_GRAPHQL_WS_URL=wss://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8080.app.github.dev/graphql
+      - VITE_KEYCLOAK_URL=https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev
+      - VITE_KEYCLOAK_REALM=myrealm
+      - VITE_KEYCLOAK_CLIENT_ID=react-app
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npm run dev
     
 volumes:
   postgres_data:
+  keycloak_data:
   nuget-packages:
   redis-data:
 
