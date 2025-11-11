@@ -6,33 +6,16 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-user_name}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-my_secure_password}
-      POSTGRES_DB: ${POSTGRES_DB:-crud_users_db}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - "5432:5432"
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user_name} -d ${POSTGRES_DB:-crud_users_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  keycloak-db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    container_name: keycloak_db
-    environment:
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak_password
-      POSTGRES_DB: keycloak_db
-    volumes:
-      - keycloak_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user_name}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,9 +27,10 @@ services:
     command: start-dev
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak_db
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak_password
+      # Updated to use the same db instance with keycloak_db database
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER:-user_name}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-my_secure_password}
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HOSTNAME_STRICT: false
@@ -58,7 +42,7 @@ services:
     ports:
       - "8090:8080"
     depends_on:
-      keycloak-db:
+      db:
         condition: service_healthy
     networks:
       - app-network
@@ -88,18 +72,17 @@ services:
     container_name: graphql_api
     restart: unless-stopped
     environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=${POSTGRES_DB:-crud_users_db};Username=${POSTGRES_USER:-user_name};Password=${POSTGRES_PASSWORD:-my_secure_password}"
+      # Updated to specify crud_users_db database
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=crud_users_db;Username=${POSTGRES_USER:-user_name};Password=${POSTGRES_PASSWORD:-my_secure_password}"
       ConnectionStrings__Redis: "redis:6379"
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
-      # FIXED: Use internal Docker network URL for Keycloak
       Keycloak__Authority: "http://keycloak:8080/realms/myrealm"
       Keycloak__MetadataAddress: "http://keycloak:8080/realms/myrealm/.well-known/openid-configuration"
       Keycloak__Audience: "graphql-api"
       Keycloak__RequireHttpsMetadata: "false"
       Keycloak__ValidateIssuer: "false"
-      # Add the external issuer for token validation
       Keycloak__ExternalAuthority: "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev/realms/myrealm"
       Cors__AllowedOrigins__0: "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-3000.app.github.dev"
       Cors__AllowedOrigins__1: "http://localhost:3000"
@@ -145,7 +128,6 @@ services:
     
 volumes:
   postgres_data:
-  keycloak_data:
   nuget-packages:
   redis-data:
 
