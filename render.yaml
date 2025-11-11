@@ -1,12 +1,8 @@
 databases:
+  # Single PostgreSQL instance
   - name: postgres-db
-    databaseName: crud_users_db
+    databaseName: postgres
     user: user_name
-    plan: free
-
-  - name: keycloak-db
-    databaseName: keycloak_db
-    user: keycloak
     plan: free
 
 services:
@@ -16,6 +12,35 @@ services:
     plan: free
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
+
+  # Database Initialization Worker (Creates additional databases)
+  - type: worker
+    name: db-init
+    runtime: docker
+    plan: free
+    dockerfilePath: ./db-init/Dockerfile
+    dockerContext: ./db-init
+    envVars:
+      - key: PGHOST
+        fromDatabase:
+          name: postgres-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: postgres-db
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: postgres-db
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: postgres-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: postgres-db
+          property: password
 
   # Keycloak Authentication Server
   - type: web
@@ -30,23 +55,21 @@ services:
         value: postgres
       - key: KC_DB_URL_HOST
         fromDatabase:
-          name: keycloak-db
+          name: postgres-db
           property: host
       - key: KC_DB_URL_PORT
         fromDatabase:
-          name: keycloak-db
+          name: postgres-db
           property: port
       - key: KC_DB_URL_DATABASE
-        fromDatabase:
-          name: keycloak-db
-          property: database
+        value: keycloak_db
       - key: KC_DB_USERNAME
         fromDatabase:
-          name: keycloak-db
+          name: postgres-db
           property: user
       - key: KC_DB_PASSWORD
         fromDatabase:
-          name: keycloak-db
+          name: postgres-db
           property: password
       - key: KEYCLOAK_ADMIN
         value: admin
@@ -74,29 +97,44 @@ services:
         value: Production
       - key: ASPNETCORE_URLS
         value: http://+:8080
-      - key: ConnectionStrings__DefaultConnection
+      - key: DB_HOST
         fromDatabase:
           name: postgres-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: postgres-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: postgres-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: postgres-db
+          property: password
+      - key: DB_NAME
+        value: crud_users_db
       - key: ConnectionStrings__Redis
         fromService:
           name: redis-cache
           type: redis
           property: connectionString
-      - key: Keycloak__Authority
+      # These need to be set after deployment - see entrypoint script
+      - key: RENDER_EXTERNAL_HOSTNAME
         sync: false
-      - key: Keycloak__MetadataAddress
+      - key: KEYCLOAK_SERVICE_URL
+        sync: false
+      - key: FRONTEND_SERVICE_URL
         sync: false
       - key: Keycloak__Audience
         value: graphql-api
       - key: Keycloak__RequireHttpsMetadata
-        value: "false"
+        value: "true"
       - key: Keycloak__ValidateIssuer
         value: "true"
-      - key: Cors__AllowedOrigins__0
-        sync: false
-      - key: Cors__AllowedOrigins__1
-        value: http://localhost:3000
+      - key: Keycloak__ValidateAudience
+        value: "true"
 
   # Frontend React App
   - type: web
@@ -107,6 +145,7 @@ services:
     dockerContext: ./frontend
     healthCheckPath: /health
     envVars:
+      # These need to be set after deployment - see build script
       - key: VITE_GRAPHQL_HTTP_URL
         sync: false
       - key: VITE_GRAPHQL_WS_URL
