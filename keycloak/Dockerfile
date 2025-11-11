@@ -1,20 +1,18 @@
 FROM quay.io/keycloak/keycloak:23.0
 
-# Set working directory
-WORKDIR /opt/keycloak
+# Install postgresql client for database initialization
+USER root
+RUN microdnf install -y postgresql && microdnf clean all
 
-# Configure Keycloak for production
-ENV KC_HTTP_RELATIVE_PATH=/
-ENV KC_HEALTH_ENABLED=true
-ENV KC_METRICS_ENABLED=true
-ENV KC_DB=postgres
+# Copy initialization script
+COPY init-databases.sh /opt/keycloak/init-databases.sh
+RUN chmod +x /opt/keycloak/init-databases.sh
 
-# Build the optimized Keycloak image
-RUN /opt/keycloak/bin/kc.sh build
+# Copy entrypoint wrapper
+COPY entrypoint.sh /opt/keycloak/entrypoint.sh
+RUN chmod +x /opt/keycloak/entrypoint.sh
 
-# Expose port
-EXPOSE 8080
+USER 1000
 
-# Start Keycloak in production mode
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-CMD ["start", "--optimized", "--proxy=edge", "--hostname-strict=false", "--http-enabled=true"]
+ENTRYPOINT ["/opt/keycloak/entrypoint.sh"]
+CMD ["start"]
