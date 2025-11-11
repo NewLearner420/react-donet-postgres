@@ -1,7 +1,7 @@
 databases:
   # Single PostgreSQL instance
   - name: postgres-db
-    databaseName: postgres
+    databaseName: main_db
     user: user_name
     plan: free
 
