@@ -32,8 +32,12 @@ services:
         fromDatabase:
           name: postgres-db
           property: port
-      - key: KC_DB_URL_DATABASE
-        value: keycloak_db
+- key: KC_DB_URL_DATABASE
+  fromDatabase:
+    name: postgres-db
+    property: database
+- key: KC_TARGET_DB
+  value: keycloak_db
       - key: KC_DB_USERNAME
         fromDatabase:
           name: postgres-db
