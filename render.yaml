@@ -58,6 +58,10 @@ services:
         value: edge
       - key: KC_HEALTH_ENABLED
         value: "true"
+      - key: KC_HTTP_PORT
+        value: "8080"
+      - key: KC_HOSTNAME_PORT
+        value: "8080"
 
   # Backend GraphQL API
   - type: web
