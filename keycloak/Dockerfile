@@ -2,7 +2,10 @@ FROM quay.io/keycloak/keycloak:23.0
 
 # Install postgresql client for database initialization
 USER root
-RUN microdnf install -y postgresql && microdnf clean all
+
+# Install postgresql client
+RUN microdnf install -y --nodocs postgresql && \
+    microdnf clean all
 
 # Copy initialization script
 COPY init-databases.sh /opt/keycloak/init-databases.sh
