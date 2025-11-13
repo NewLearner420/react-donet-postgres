@@ -27,7 +27,9 @@ exec /opt/keycloak/bin/kc.sh start \
   --db-password="${KC_DB_PASSWORD}" \
   --http-enabled=true \
   --http-host=0.0.0.0 \
-  --http-port=${PORT} \
+  --http-port="${PORT}" \
   --hostname-strict=false \
+  --hostname-strict-https=false \
   --proxy=edge \
   --health-enabled=true
+
