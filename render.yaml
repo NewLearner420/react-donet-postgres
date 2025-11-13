@@ -60,6 +60,9 @@ services:
         value: "true"
       - key: KC_HTTP_RELATIVE_PATH
         value: "/"
+      - key: KC_HTTP_PORT
+        value: $PORT
+
   
   # Backend GraphQL API
   - type: web
