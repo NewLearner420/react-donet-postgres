@@ -16,6 +16,9 @@ echo "📋 Database URL: ${DB_URL}"
 echo "📋 Database User: ${KC_DB_USERNAME}"
 echo "📋 HTTP Port: ${PORT}"
 
+echo "🔍 Checking port binding inside container..."
+netstat -tuln | grep $PORT || echo "⚠️ Nothing listening on $PORT yet"
+
 # Start Keycloak with all settings as command args
 exec /opt/keycloak/bin/kc.sh start \
   --db=postgres \
@@ -23,6 +26,7 @@ exec /opt/keycloak/bin/kc.sh start \
   --db-username="${KC_DB_USERNAME}" \
   --db-password="${KC_DB_PASSWORD}" \
   --http-enabled=true \
+  --http-host=0.0.0.0 \
   --http-port=${PORT} \
   --hostname-strict=false \
   --proxy=edge \
