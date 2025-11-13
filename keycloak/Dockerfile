@@ -7,6 +7,6 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-EXPOSE 8080
+RUN rm -rf /opt/keycloak/conf/*
 
 ENTRYPOINT ["/opt/keycloak/entrypoint.sh"]
