@@ -19,7 +19,6 @@ echo "📋 HTTP Port: ${PORT}"
 # Start Keycloak with all settings as command args
 exec /opt/keycloak/bin/kc.sh start \
   --optimized \
-  --db=postgres \
   --db-url="${DB_URL}" \
   --db-username="${KC_DB_USERNAME}" \
   --db-password="${KC_DB_PASSWORD}" \
@@ -27,8 +26,8 @@ exec /opt/keycloak/bin/kc.sh start \
   --http-host=0.0.0.0 \
   --http-port="${PORT}" \
   --hostname-strict=false \
-  --hostname-strict-https=false \
   --proxy=edge \
   --health-enabled=true
+
 
 
