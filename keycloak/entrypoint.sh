@@ -3,23 +3,27 @@ set -e
 
 echo "🚀 Starting Keycloak..."
 
-# Use Render's PORT variable
-export KC_HTTP_PORT="${PORT:-8080}"
+# Render provides PORT variable
+PORT="${PORT:-8080}"
 
-# Use your existing keycloak_db database
-export KC_DB_URL_DATABASE="${KC_TARGET_DB:-keycloak_db}"
+# Build the database name (use keycloak_db)
+DB_NAME="${KC_TARGET_DB:-keycloak_db}"
 
-# Build JDBC URL (Keycloak requires this format)
-export KC_DB_URL="jdbc:postgresql://${KC_DB_URL_HOST}:${KC_DB_URL_PORT:-5432}/${KC_DB_URL_DATABASE}"
+# Build JDBC URL with proper format
+DB_URL="jdbc:postgresql://${KC_DB_URL_HOST}:${KC_DB_URL_PORT:-5432}/${DB_NAME}"
 
-echo "📋 Database: ${KC_DB_URL_DATABASE}"
-echo "📋 JDBC URL: ${KC_DB_URL}"
-echo "📋 HTTP Port: ${KC_HTTP_PORT}"
+echo "📋 Database URL: ${DB_URL}"
+echo "📋 Database User: ${KC_DB_USERNAME}"
+echo "📋 HTTP Port: ${PORT}"
 
-# Start Keycloak
-echo "🔐 Starting Keycloak server..."
+# Start Keycloak with all settings as command args
 exec /opt/keycloak/bin/kc.sh start \
+  --db=postgres \
+  --db-url="${DB_URL}" \
+  --db-username="${KC_DB_USERNAME}" \
+  --db-password="${KC_DB_PASSWORD}" \
   --http-enabled=true \
-  --http-port=${KC_HTTP_PORT} \
+  --http-port=${PORT} \
   --hostname-strict=false \
-  --proxy=edge
+  --proxy=edge \
+  --health-enabled=true
