@@ -14,13 +14,17 @@ echo "📋 Database URL: ${DB_URL}"
 echo "📋 Database User: ${KC_DB_USERNAME}"
 echo "📋 HTTP Port: ${PORT}"
 
-# Start Keycloak with only supported runtime flags
+# Build Keycloak first (required for start command)
+/opt/keycloak/bin/kc.sh build \
+  --db=postgres
+
+# Start Keycloak with runtime flags
 exec /opt/keycloak/bin/kc.sh start \
-  --db=postgres \
   --db-url="${DB_URL}" \
   --db-username="${KC_DB_USERNAME}" \
   --db-password="${KC_DB_PASSWORD}" \
   --http-port="${PORT}" \
   --http-host=0.0.0.0 \
-  --proxy=edge
-
+  --hostname-strict=false \
+  --proxy-headers=xforwarded \
+  --http-enabled=true
