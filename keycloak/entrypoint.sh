@@ -3,24 +3,16 @@ set -e
 
 echo "🚀 Starting Keycloak..."
 
-# Render provides PORT variable
 PORT="${PORT:-8080}"
-
-# Database
 DB_NAME="${KC_TARGET_DB:-keycloak_db}"
 DB_URL="jdbc:postgresql://${KC_DB_URL_HOST}:${KC_DB_URL_PORT:-5432}/${DB_NAME}"
 
 echo "📋 Database URL: ${DB_URL}"
 echo "📋 Database User: ${KC_DB_USERNAME}"
 echo "📋 HTTP Port: ${PORT}"
+echo "🎯 Starting server on 0.0.0.0:${PORT}..."
 
-# Build Keycloak first (required for start command)
-/opt/keycloak/bin/kc.sh build \
-  --db=postgres
-
-echo "✅ Build complete, starting server..."
-
-# Start Keycloak with runtime flags
+# Start Keycloak (already built in Dockerfile)
 exec /opt/keycloak/bin/kc.sh start \
   --optimized \
   --db-url="${DB_URL}" \

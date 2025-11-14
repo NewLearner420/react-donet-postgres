@@ -7,6 +7,7 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-RUN rm -rf /opt/keycloak/conf/*
+# Build Keycloak during image build (not at runtime)
+RUN /opt/keycloak/bin/kc.sh build --db=postgres
 
 ENTRYPOINT ["/opt/keycloak/entrypoint.sh"]
