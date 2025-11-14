@@ -21,5 +21,5 @@ exec /opt/keycloak/bin/kc.sh start \
   --http-port="${PORT}" \
   --http-host=0.0.0.0 \
   --hostname-strict=false \
-  --proxy-headers=xforwarded \
+  --proxy=edge \
   --http-enabled=true
