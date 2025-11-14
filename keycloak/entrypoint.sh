@@ -18,8 +18,11 @@ echo "📋 HTTP Port: ${PORT}"
 /opt/keycloak/bin/kc.sh build \
   --db=postgres
 
+echo "✅ Build complete, starting server..."
+
 # Start Keycloak with runtime flags
 exec /opt/keycloak/bin/kc.sh start \
+  --optimized \
   --db-url="${DB_URL}" \
   --db-username="${KC_DB_USERNAME}" \
   --db-password="${KC_DB_PASSWORD}" \
