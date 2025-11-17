@@ -2,8 +2,8 @@ FROM quay.io/keycloak/keycloak:23.0
 
 USER root
 
-# Install PostgreSQL client directly
-RUN microdnf install -y postgresql && microdnf clean all
+# Install PostgreSQL client (Keycloak uses RHEL-based image)
+RUN dnf install -y postgresql && dnf clean all
 
 # Copy scripts
 COPY init-db.sh /opt/keycloak/init-db.sh
