@@ -1,12 +1,9 @@
-FROM postgres:15-alpine AS postgres-client
-
 FROM quay.io/keycloak/keycloak:23.0
 
 USER root
 
-# Copy psql binary and libraries (use correct Alpine Linux paths)
-COPY --from=postgres-client /usr/local/bin/psql /usr/local/bin/psql
-COPY --from=postgres-client /usr/local/lib/libpq.so* /usr/local/lib/
+# Install PostgreSQL client directly
+RUN microdnf install -y postgresql && microdnf clean all
 
 # Copy scripts
 COPY init-db.sh /opt/keycloak/init-db.sh
