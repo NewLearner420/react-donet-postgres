@@ -1,9 +1,16 @@
+# Stage 1: Get psql from standard Debian-based postgres image
+FROM postgres:15 AS postgres-builder
+
+# Stage 2: Build Keycloak
 FROM quay.io/keycloak/keycloak:23.0
 
 USER root
 
-# Install PostgreSQL client (Keycloak uses RHEL-based image)
-RUN dnf install -y postgresql && dnf clean all
+# Copy PostgreSQL client binaries and libraries from Debian postgres
+COPY --from=postgres-builder /usr/bin/psql /usr/bin/psql
+COPY --from=postgres-builder /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib64/
+COPY --from=postgres-builder /usr/lib/x86_64-linux-gnu/libpgcommon* /usr/lib64/
+COPY --from=postgres-builder /usr/lib/x86_64-linux-gnu/libpgport* /usr/lib64/
 
 # Copy scripts
 COPY init-db.sh /opt/keycloak/init-db.sh
