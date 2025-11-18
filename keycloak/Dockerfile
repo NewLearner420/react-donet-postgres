@@ -8,7 +8,8 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-# Build Keycloak with PostgreSQL support
-RUN /opt/keycloak/bin/kc.sh build --db=postgres
+# Clean stale config and rebuild Keycloak
+RUN rm -rf /opt/keycloak/conf/* && \
+    /opt/keycloak/bin/kc.sh build --db=postgres
 
 ENTRYPOINT ["/opt/keycloak/entrypoint.sh"]
