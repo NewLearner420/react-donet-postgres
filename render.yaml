@@ -4,9 +4,9 @@ databases:
     databaseName: crud_users_db
     user: app_user
     plan: free
-
-services:
+  
   # Redis Cache
+services:
   - type: redis
     name: redis-cache
     plan: free
