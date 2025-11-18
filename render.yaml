@@ -1,18 +1,16 @@
 databases:
-  # Single database for your app
   - name: postgres-db
     databaseName: crud_users_db
     user: app_user
     plan: free
-  
-  # Redis Cache
+
 services:
+  # Redis Cache
   - type: redis
     name: redis-cache
     plan: free
     maxmemoryPolicy: allkeys-lru
-    # ADD THIS LINE
-    ipAllowList: []
+    ipAllowList: []
 
   # Keycloak
   - type: web
@@ -43,7 +41,7 @@ services:
         value: edge
       - key: KC_HEALTH_ENABLED
         value: "true"
-  
+
   # Backend API
   - type: web
     name: graphql-api
@@ -79,7 +77,7 @@ services:
           type: redis
           property: connectionString
       - key: KEYCLOAK_SERVICE_URL
-        sync: false  # Set to your Keycloak URL after deployment
+        sync: false
       - key: Keycloak__Audience
         value: graphql-api
 
@@ -92,9 +90,9 @@ services:
     dockerContext: ./frontend
     envVars:
       - key: VITE_GRAPHQL_HTTP_URL
-        sync: false  # Set to your GraphQL URL after deployment
+        sync: false
       - key: VITE_KEYCLOAK_URL
-        sync: false  # Set to your Keycloak URL after deployment
+        sync: false
       - key: VITE_KEYCLOAK_REALM
         value: myrealm
       - key: VITE_KEYCLOAK_CLIENT_ID
