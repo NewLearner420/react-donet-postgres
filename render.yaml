@@ -14,7 +14,7 @@ services:
     # ADD THIS LINE
     ipAllowList: []
 
-  # Keycloak (using Neon - just paste your connection string)
+  # Keycloak
   - type: web
     name: keycloak
     runtime: docker
