@@ -13,7 +13,6 @@ services:
     maxmemoryPolicy: allkeys-lru
 
   # Keycloak (using Neon - just paste your connection string)
-  services:
   - type: web
     name: keycloak
     runtime: docker
