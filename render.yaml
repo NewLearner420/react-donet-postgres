@@ -11,6 +11,8 @@ services:
     name: redis-cache
     plan: free
     maxmemoryPolicy: allkeys-lru
+    # ADD THIS LINE
+    ipAllowList: []
 
   # Keycloak (using Neon - just paste your connection string)
   - type: web
