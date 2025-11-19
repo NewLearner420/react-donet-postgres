@@ -7,4 +7,5 @@ exec /opt/keycloak/bin/kc.sh start \
   --http-port=8080 \
   --hostname-strict=false \
   --http-enabled=true \
-  --proxy=edge
+  --proxy=edge \
+  --cache=local
