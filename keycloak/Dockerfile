@@ -7,8 +7,8 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-# Build phase - required for Keycloak 23+
-RUN /opt/keycloak/bin/kc.sh build
+# Build phase with local cache
+RUN /opt/keycloak/bin/kc.sh build --cache=local
 
 EXPOSE 8080
 
