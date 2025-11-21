@@ -8,7 +8,7 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 USER 1000
 
 # Build phase with local cache
-RUN /opt/keycloak/bin/kc.sh build --cache=local
+RUN /opt/keycloak/bin/kc.sh build --db=postgres --cache=local
 
 EXPOSE 8080
 
