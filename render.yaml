@@ -24,7 +24,7 @@ services:
       - key: KC_DB
         value: postgres
       - key: KC_DB_URL
-        value: jdbc:postgresql://ep-fragrant-bar-adb2cjoa.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
+        value: jdbc:postgresql://ep-fragrant-bar-adb2cjoa.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=30&socketTimeout=30
       - key: KC_DB_USERNAME
         value: neondb_owner
       - key: KC_DB_PASSWORD
