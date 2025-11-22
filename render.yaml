@@ -1,97 +1,28 @@
-databases:
-  - name: postgres-db
-    databaseName: crud_users_db
-    user: app_user
-    plan: free
-
-services:
-  # Redis Cache
-  - type: redis
-    name: redis-cache
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
-
-  # Keycloak
-  - type: web
-    name: keycloak
-    runtime: docker
-    plan: free
-    dockerfilePath: ./keycloak/Dockerfile
-    dockerContext: ./keycloak
-    healthCheckPath: /health
-    envVars:
-      - key: KC_DB
-        value: postgres
-      - key: KC_DB_URL
-        value: jdbc:postgresql://ep-fragrant-bar-adb2cjoa.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=30&socketTimeout=30
-      - key: KC_DB_USERNAME
-        value: neondb_owner
-      - key: KC_DB_PASSWORD
-        value: npg_QRg2mB5VwrXc
-      - key: KEYCLOAK_ADMIN
-        value: admin
-      - key: KEYCLOAK_ADMIN_PASSWORD
-        value: admin123
-      - key: KC_HOSTNAME_STRICT
-        value: "false"
-      - key: KC_HTTP_ENABLED
-        value: "true"
-      - key: KC_PROXY
-        value: edge
-
-  # Backend API
-  - type: web
-    name: graphql-api
-    runtime: docker
-    plan: free
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    healthCheckPath: /health
-    envVars:
-      - key: ASPNETCORE_URLS
-        value: http://+:$PORT
-      - key: DB_HOST
-        fromDatabase:
-          name: postgres-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: postgres-db
-          property: port
-      - key: DB_USER
-        fromDatabase:
-          name: postgres-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: postgres-db
-          property: password
-      - key: DB_NAME
-        value: crud_users_db
-      - key: ConnectionStrings__Redis
-        fromService:
-          name: redis-cache
-          type: redis
-          property: connectionString
-      - key: KEYCLOAK_SERVICE_URL
-        sync: false
-      - key: Keycloak__Audience
-        value: graphql-api
-
-  # Frontend
-  - type: web
-    name: react-frontend
-    runtime: docker
-    plan: free
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
-    envVars:
-      - key: VITE_GRAPHQL_HTTP_URL
-        sync: false
-      - key: VITE_KEYCLOAK_URL
-        sync: false
-      - key: VITE_KEYCLOAK_REALM
-        value: myrealm
-      - key: VITE_KEYCLOAK_CLIENT_ID
-        value: react-app
+- type: web
+  name: keycloak
+  runtime: docker
+  plan: free
+  dockerfilePath: ./keycloak/Dockerfile
+  dockerContext: ./keycloak
+  healthCheckPath: /health/ready
+  envVars:
+    - key: KC_DB
+      value: postgres
+    - key: KC_DB_URL
+      sync: false
+    - key: KC_DB_USERNAME
+      sync: false
+    - key: KC_DB_PASSWORD
+      sync: false
+    - key: KEYCLOAK_ADMIN
+      value: admin
+    - key: KEYCLOAK_ADMIN_PASSWORD
+      sync: false
+    - key: KC_HOSTNAME_STRICT
+      value: "false"
+    - key: KC_HTTP_ENABLED
+      value: "true"
+    - key: KC_PROXY
+      value: edge
+    - key: KC_HEALTH_ENABLED
+      value: "true"

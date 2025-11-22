@@ -7,8 +7,11 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-# Build phase with local cache
-RUN /opt/keycloak/bin/kc.sh build --db=postgres --cache=local
+# Build phase with health endpoints enabled
+RUN /opt/keycloak/bin/kc.sh build \
+    --db=postgres \
+    --cache=local \
+    --health-enabled=true
 
 EXPOSE 8080
 
