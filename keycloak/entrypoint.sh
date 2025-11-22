@@ -1,14 +1,18 @@
 #!/bin/bash
 set -e
 
-echo "Starting Keycloak with Neon PostgreSQL..."
-echo "PORT env variable is: ${PORT}"
+# TEMPORARY - Remove after testing!
+export KC_DB_URL="jdbc:postgresql://ep-fragrant-bar-adb2cjoa.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
+export KC_DB_USERNAME="neondb_owner"
+export KC_DB_PASSWORD="your-new-rotated-password"
 
-# Optional: wait for database connection
-echo "Waiting for database connection..."
-sleep 5
+echo "Starting Keycloak..."
+echo "PORT: ${PORT}"
+echo "DB URL: ${KC_DB_URL}"
+echo "DB User: ${KC_DB_USERNAME}"
 
-# Remove --health-enabled from here - it's a build-time option
+sleep 15
+
 exec /opt/keycloak/bin/kc.sh start \
   --optimized \
   --http-host=0.0.0.0 \
