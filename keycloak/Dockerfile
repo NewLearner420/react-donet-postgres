@@ -7,7 +7,7 @@ RUN chmod +x /opt/keycloak/entrypoint.sh
 
 USER 1000
 
-# Build phase with health endpoints enabled
+# Build phase - enable health here (build-time only option)
 RUN /opt/keycloak/bin/kc.sh build \
     --db=postgres \
     --cache=local \
