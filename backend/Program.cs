@@ -166,7 +166,7 @@ options.TokenValidationParameters = new TokenValidationParameters
     ValidAudience = keycloakSettings.Audience,
     ClockSkew = TimeSpan.FromMinutes(5)
 };
-            
+    });        
 // Add GraphQL with HotChocolate
 builder.Services
     .AddGraphQLServer()
