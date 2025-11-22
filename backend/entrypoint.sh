@@ -25,4 +25,4 @@ echo "🔐 Keycloak: ${Keycloak__Authority}"
 echo "🌐 CORS Origins: ${Cors__AllowedOrigins__0}, ${Cors__AllowedOrigins__1}"
 
 # Start the application
-exec dotnet YourApp.dll
+exec dotnet backend.dll
