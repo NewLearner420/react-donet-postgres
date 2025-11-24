@@ -90,7 +90,7 @@ services:
       - key: VITE_GRAPHQL_HTTP_URL
         sync: false
       - key: VITE_KEYCLOAK_URL
-        sync: false
+        value: https://keycloak-ejlu.onrender.com
       - key: VITE_KEYCLOAK_REALM
         value: myrealm
       - key: VITE_KEYCLOAK_CLIENT_ID
