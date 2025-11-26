@@ -14,13 +14,13 @@ services:
 
   # Keycloak
   - type: web
-  name: keycloak
-  runtime: docker
-  plan: free
-  dockerfilePath: ./keycloak/Dockerfile
-  dockerContext: ./keycloak
-  healthCheckPath: /health/ready
-  envVars:
+    name: keycloak
+    runtime: docker
+    plan: free
+    dockerfilePath: ./keycloak/Dockerfile
+    dockerContext: ./keycloak
+    healthCheckPath: /health/ready
+    envVars:
     - key: KC_DB
       value: postgres
     - key: KC_DB_URL
