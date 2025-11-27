@@ -75,17 +75,23 @@ if (redisUrl.StartsWith("redis://"))
 
 Console.WriteLine($"🔍 Connecting to Redis: {redisUrl}");
 
-// Add Redis with retry and timeout settings
+// Add Redis with better timeout and retry settings
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     try
     {
         var configOptions = ConfigurationOptions.Parse(redisUrl);
+        
+        // Better settings for free tier stability
         configOptions.AbortOnConnectFail = false;
-        configOptions.ConnectTimeout = 10000;
-        configOptions.SyncTimeout = 5000;
-        configOptions.ConnectRetry = 3;
-        configOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
+        configOptions.ConnectTimeout = 15000;      // 15 seconds to connect
+        configOptions.SyncTimeout = 10000;         // 10 seconds for sync operations
+        configOptions.ConnectRetry = 5;            // Retry 5 times
+        configOptions.ReconnectRetryPolicy = new ExponentialRetry(5000, 10000);
+        configOptions.DefaultDatabase = 0;
+        
+        // Enable keep-alive to detect stale connections
+        configOptions.KeepAlive = 60;
 
         var redis = ConnectionMultiplexer.Connect(configOptions);
         Console.WriteLine("✅ Redis connected successfully");
@@ -93,8 +99,10 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Redis connection failed: {ex.Message}");
-        throw;
+        Console.WriteLine($"⚠️ Redis connection warning: {ex.Message}");
+        // Don't throw - allow app to start even if Redis is temporarily unavailable
+        // This is important for free tier which may be slow to initialize
+        return null;
     }
 });
 
@@ -155,22 +163,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.SaveToken = false;
         options.IncludeErrorDetails = true;
 
-options.TokenValidationParameters = new TokenValidationParameters
-{
-    ValidateIssuer = true,
-    ValidateAudience = true,
-    ValidateLifetime = true,
-    ValidateIssuerSigningKey = true,
-    // Accept both internal and external issuer
-    ValidIssuers = new[]
-    {
-        "http://keycloak:8080/realms/myrealm",
-        "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev/realms/myrealm"
-    },
-    ValidAudience = keycloakSettings.Audience,
-    ClockSkew = TimeSpan.FromMinutes(5)
-};
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            // Accept both internal and external issuer
+            ValidIssuers = new[]
+            {
+                "http://keycloak:8080/realms/myrealm",
+                "https://chilling-spooky-crypt-q75pxx9xp4x5h96qw-8090.app.github.dev/realms/myrealm"
+            },
+            ValidAudience = keycloakSettings.Audience,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
     });        
+
 // Add GraphQL with HotChocolate
 builder.Services
     .AddGraphQLServer()
@@ -335,6 +344,11 @@ app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
 {
     try
     {
+        if (redis == null)
+        {
+            return Results.Problem("Redis not initialized");
+        }
+        
         var db = redis.GetDatabase();
         await db.PingAsync();
         return Results.Ok(new { status = "healthy", service = "redis" });
@@ -359,5 +373,6 @@ Console.WriteLine($"🔑 Keycloak Authority: {keycloakSettings.Authority}");
 Console.WriteLine($"🎯 Expected Audience: {keycloakSettings.Audience}");
 Console.WriteLine($"📍 GraphQL endpoint: /graphql");
 Console.WriteLine($"🔍 Debug endpoint: POST /debug-token");
+Console.WriteLine($"💊 Health check: GET /health/redis");
 
 app.Run();
