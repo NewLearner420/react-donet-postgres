@@ -6,17 +6,18 @@ using backend.Data;
 using HotChocolate.Authorization;
 
 namespace backend.GraphQL;
+
 public class Mutation
 {
     // Create user
     [Authorize]
     public async Task<User> CreateUser(
-    string name,
-    string email,
-    [Service] ApplicationDbContext context,
-    [Service] ITopicEventSender eventSender,
-    [Service] ILogger<Mutation> logger, // ADD THIS
-    CancellationToken cancellationToken)
+        string name,
+        string email,
+        [Service] ApplicationDbContext context,
+        [Service] ITopicEventSender eventSender,
+        [Service] ILogger<Mutation> logger,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -34,11 +35,37 @@ public class Mutation
             await context.SaveChangesAsync(cancellationToken);
             logger.LogInformation("User saved with ID: {Id}", user.Id);
 
-            // Trigger subscription
-            logger.LogInformation("Sending subscription events...");
-            await eventSender.SendAsync(nameof(Subscription.OnUserCreated), user, cancellationToken);
-            await eventSender.SendAsync(nameof(Subscription.OnUserChanged), user, cancellationToken);
-            logger.LogInformation("Subscription events sent");
+            // Trigger subscription with timeout and error handling
+            try
+            {
+                logger.LogInformation("Sending subscription events...");
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(3)); // 3 second timeout for subscription
+
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserCreated), 
+                    user, 
+                    timeoutCts.Token);
+                
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserChanged), 
+                    user, 
+                    timeoutCts.Token);
+                
+                logger.LogInformation("Subscription events sent successfully");
+            }
+            catch (OperationCanceledException ex)
+            {
+                // Subscription timeout - log but don't fail the mutation
+                logger.LogWarning(ex, "Subscription event timeout (Redis unavailable or slow)");
+                // User was still created successfully in database
+            }
+            catch (Exception ex)
+            {
+                // Other subscription errors - log but don't fail the mutation
+                logger.LogWarning(ex, "Failed to send subscription events, but user was created");
+                // User was still created successfully in database
+            }
 
             return user;
         }
@@ -58,39 +85,82 @@ public class Mutation
         [Service] ApplicationDbContext context,
         [Service] ITopicEventSender eventSender,
         [Service] IConnectionMultiplexer redis,
+        [Service] ILogger<Mutation> logger,
         CancellationToken cancellationToken)
     {
-        var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
-
-        if (user == null)
+        try
         {
-            return null;
-        }
+            var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
 
-        if (!string.IsNullOrEmpty(name))
+            if (user == null)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrEmpty(name))
+            {
+                user.Name = name;
+            }
+
+            if (!string.IsNullOrEmpty(email))
+            {
+                user.Email = email;
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Invalidate cache with error handling
+            try
+            {
+                logger.LogInformation("Invalidating cache for user {Id}", id);
+                var db = redis.GetDatabase();
+                
+                // Use timeout to avoid hanging
+                await db.KeyDeleteAsync($"user:{id}");
+                await db.KeyDeleteAsync($"user:email:{email}");
+                
+                logger.LogInformation("Cache invalidated");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate Redis cache");
+                // Don't fail the mutation if cache invalidation fails
+            }
+
+            // Trigger subscription with timeout
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
+
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserUpdated), 
+                    user, 
+                    timeoutCts.Token);
+                
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserChanged), 
+                    user, 
+                    timeoutCts.Token);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Subscription event timeout during update");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send subscription events during update");
+            }
+
+            return user;
+        }
+        catch (Exception ex)
         {
-            user.Name = name;
+            logger.LogError(ex, "Error updating user");
+            throw;
         }
-
-        if (!string.IsNullOrEmpty(email))
-        {
-            user.Email = email;
-        }
-
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        // Invalidate cache
-        var db = redis.GetDatabase();
-        await db.KeyDeleteAsync($"user:{id}");
-        await db.KeyDeleteAsync($"user:email:{email}");
-
-        // Trigger subscription
-        await eventSender.SendAsync(nameof(Subscription.OnUserUpdated), user, cancellationToken);
-        await eventSender.SendAsync(nameof(Subscription.OnUserChanged), user, cancellationToken);
-
-        return user;
     }
 
     // Delete user
@@ -100,27 +170,68 @@ public class Mutation
         [Service] ApplicationDbContext context,
         [Service] ITopicEventSender eventSender,
         [Service] IConnectionMultiplexer redis,
+        [Service] ILogger<Mutation> logger,
         CancellationToken cancellationToken)
     {
-        var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
-
-        if (user == null)
+        try
         {
-            return false;
+            var user = await context.Users.FindAsync(new object[] { id }, cancellationToken);
+
+            if (user == null)
+            {
+                return false;
+            }
+
+            context.Users.Remove(user);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Invalidate cache with error handling
+            try
+            {
+                logger.LogInformation("Invalidating cache for deleted user {Id}", id);
+                var db = redis.GetDatabase();
+                
+                await db.KeyDeleteAsync($"user:{id}");
+                await db.KeyDeleteAsync($"user:email:{user.Email}");
+                
+                logger.LogInformation("Cache invalidated");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate Redis cache");
+            }
+
+            // Trigger subscription with timeout
+            try
+            {
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(3));
+
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserDeleted), 
+                    user, 
+                    timeoutCts.Token);
+                
+                await eventSender.SendAsync(
+                    nameof(Subscription.OnUserChanged), 
+                    user, 
+                    timeoutCts.Token);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger.LogWarning(ex, "Subscription event timeout during delete");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to send subscription events during delete");
+            }
+
+            return true;
         }
-
-        context.Users.Remove(user);
-        await context.SaveChangesAsync(cancellationToken);
-
-        // Invalidate cache
-        var db = redis.GetDatabase();
-        await db.KeyDeleteAsync($"user:{id}");
-        await db.KeyDeleteAsync($"user:email:{user.Email}");
-
-        // Trigger subscription
-        await eventSender.SendAsync(nameof(Subscription.OnUserDeleted), user, cancellationToken);
-        await eventSender.SendAsync(nameof(Subscription.OnUserChanged), user, cancellationToken);
-
-        return true;
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting user");
+            throw;
+        }
     }
 }
