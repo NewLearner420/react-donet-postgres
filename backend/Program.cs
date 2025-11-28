@@ -75,6 +75,8 @@ if (redisUrl.StartsWith("redis://"))
 
 Console.WriteLine($"🔍 Connecting to Redis: {redisUrl}");
 
+IConnectionMultiplexer redisConnection = null;
+
 // Add Redis with better timeout and retry settings
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -84,24 +86,33 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
         
         // Better settings for free tier stability
         configOptions.AbortOnConnectFail = false;
-        configOptions.ConnectTimeout = 15000;      // 15 seconds to connect
-        configOptions.SyncTimeout = 10000;         // 10 seconds for sync operations
-        configOptions.ConnectRetry = 5;            // Retry 5 times
-        configOptions.ReconnectRetryPolicy = new ExponentialRetry(5000, 10000);
+        configOptions.ConnectTimeout = 5000;       // 5 seconds to connect
+        configOptions.SyncTimeout = 5000;          // 5 seconds for sync operations
+        configOptions.ConnectRetry = 3;            // Retry 3 times
         configOptions.DefaultDatabase = 0;
         
         // Enable keep-alive to detect stale connections
         configOptions.KeepAlive = 60;
 
-        var redis = ConnectionMultiplexer.Connect(configOptions);
-        Console.WriteLine("✅ Redis connected successfully");
-        return redis;
+        // Use async connect with timeout to prevent hanging
+        var connectTask = ConnectionMultiplexer.ConnectAsync(configOptions);
+        if (connectTask.Wait(TimeSpan.FromSeconds(10)))
+        {
+            redisConnection = connectTask.Result;
+            if (redisConnection?.IsConnected == true)
+            {
+                Console.WriteLine("✅ Redis connected successfully");
+                return redisConnection;
+            }
+        }
+        
+        Console.WriteLine("⚠️ Redis connection could not be established, running without Redis");
+        return null;
     }
     catch (Exception ex)
     {
         Console.WriteLine($"⚠️ Redis connection warning: {ex.Message}");
         // Don't throw - allow app to start even if Redis is temporarily unavailable
-        // This is important for free tier which may be slow to initialize
         return null;
     }
 });
@@ -346,25 +357,73 @@ app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
     {
         if (redis == null)
         {
-            return Results.Problem("Redis not initialized");
+            return Results.Ok(new 
+            { 
+                status = "degraded", 
+                service = "redis",
+                message = "Redis not initialized (running in degraded mode)",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        
+        if (!redis.IsConnected)
+        {
+            return Results.Ok(new 
+            { 
+                status = "unavailable", 
+                service = "redis",
+                message = "Redis connection established but not currently connected",
+                timestamp = DateTime.UtcNow
+            });
         }
         
         var db = redis.GetDatabase();
-        await db.PingAsync();
-        return Results.Ok(new { status = "healthy", service = "redis" });
+        var pingTask = db.PingAsync();
+        
+        if (pingTask.Wait(TimeSpan.FromSeconds(3)))
+        {
+            return Results.Ok(new 
+            { 
+                status = "healthy", 
+                service = "redis",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            return Results.Ok(new 
+            { 
+                status = "timeout", 
+                service = "redis",
+                message = "Redis ping timed out",
+                timestamp = DateTime.UtcNow
+            });
+        }
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Redis error: {ex.Message}");
+        return Results.Ok(new 
+        { 
+            status = "error", 
+            service = "redis",
+            message = ex.Message,
+            timestamp = DateTime.UtcNow
+        });
     }
 });
 
-app.MapGet("/health", () => Results.Ok(new 
-{ 
-    status = "healthy", 
-    timestamp = DateTime.UtcNow,
-    environment = app.Environment.EnvironmentName
-}));
+app.MapGet("/health", () => 
+{
+    var redisStatus = redisConnection?.IsConnected == true ? "healthy" : "degraded";
+    
+    return Results.Ok(new 
+    { 
+        status = "healthy", 
+        redis = redisStatus,
+        timestamp = DateTime.UtcNow,
+        environment = app.Environment.EnvironmentName
+    });
+});
 
 Console.WriteLine("🚀 Application starting...");
 Console.WriteLine($"🌐 Environment: {app.Environment.EnvironmentName}");
@@ -373,6 +432,8 @@ Console.WriteLine($"🔑 Keycloak Authority: {keycloakSettings.Authority}");
 Console.WriteLine($"🎯 Expected Audience: {keycloakSettings.Audience}");
 Console.WriteLine($"📍 GraphQL endpoint: /graphql");
 Console.WriteLine($"🔍 Debug endpoint: POST /debug-token");
-Console.WriteLine($"💊 Health check: GET /health/redis");
+Console.WriteLine($"💊 Health check: GET /health");
+Console.WriteLine($"💊 Redis health: GET /health/redis");
+Console.WriteLine($"🔍 Connecting to Redis: {redisUrl}");
 
 app.Run();
