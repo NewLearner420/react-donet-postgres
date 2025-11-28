@@ -351,6 +351,23 @@ app.MapPost("/test-token", async (HttpContext context) =>
 
 app.MapGet("/", () => Results.Redirect("/graphql"));
 
+app.MapGet("/diagnose-redis", async (HttpContext context) =>
+{
+    var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") 
+                   ?? "Not set";
+    
+    var diagnostics = new
+    {
+        redisUrlEnvVar = redisUrl,
+        redisUrlConfigured = !string.IsNullOrEmpty(redisUrl),
+        hostname = redisUrl.Contains("@") ? redisUrl.Split("@")[1].Split(":")[0] : "N/A",
+        port = redisUrl.Contains(":6379") ? 6379 : 0000,
+        timestamp = DateTime.UtcNow
+    };
+    
+    return Results.Ok(diagnostics);
+}).AllowAnonymous();
+
 app.MapGet("/health/redis", async (IConnectionMultiplexer redis) =>
 {
     try
