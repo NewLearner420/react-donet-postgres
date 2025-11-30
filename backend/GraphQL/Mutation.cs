@@ -4,6 +4,7 @@ using StackExchange.Redis;
 using backend.Models;
 using backend.Data;
 using HotChocolate.Authorization;
+using backend.Services;
 
 namespace backend.GraphQL;
 
@@ -234,4 +235,32 @@ public class Mutation
             throw;
         }
     }
+
+     // Add this method to your existing Mutation class
+        public async Task<string> PublishUserEvent(
+            [Service] IKafkaService kafkaService,
+            string userId,
+            string eventType,
+            string eventData)
+        {
+            var kafkaMessage = new
+            {
+                userId,
+                eventType,
+                eventData,
+                timestamp = DateTime.UtcNow
+            };
+
+            var messageJson = System.Text.Json.JsonSerializer.Serialize(kafkaMessage);
+            
+            var success = await kafkaService.ProduceMessageAsync(
+                "user-events",
+                userId,
+                messageJson
+            );
+
+            return success 
+                ? "Event published successfully" 
+                : "Failed to publish event";
+        }
 }

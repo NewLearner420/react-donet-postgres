@@ -27,7 +27,6 @@ services:
     command: start-dev
     environment:
       KC_DB: postgres
-      # Updated to use the same db instance with keycloak_db database
       KC_DB_URL: jdbc:postgresql://db:5432/keycloak_db
       KC_DB_USERNAME: ${POSTGRES_USER:-user_name}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-my_secure_password}
@@ -64,6 +63,63 @@ services:
       timeout: 3s
       retries: 5
 
+  # ============= KAFKA KRAFT (NEW) =============
+  kafka:
+    build:
+      context: ./kafka
+      dockerfile: Dockerfile
+    container_name: kafka_kraft
+    restart: unless-stopped
+    ports:
+      - "9092:9092"   # Internal/Docker network
+      - "9093:9093"   # Controller
+      - "9094:9094"   # External (for host machine access)
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}
+      # Performance tuning for development
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/local/bin/health-check.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Optional: Kafka UI for easy management
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui
+    restart: unless-stopped
+    ports:
+      - "8089:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-network
+
   api:
     build:
       context: ./backend
@@ -72,9 +128,9 @@ services:
     container_name: graphql_api
     restart: unless-stopped
     environment:
-      # Updated to specify crud_users_db database
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=crud_users_db;Username=${POSTGRES_USER:-user_name};Password=${POSTGRES_PASSWORD:-my_secure_password}"
       ConnectionStrings__Redis: "redis:6379"
+      ConnectionStrings__Kafka: "kafka:9092"  # NEW: Kafka connection
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: "http://+:8080"
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
@@ -92,6 +148,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - app-network
@@ -130,6 +188,7 @@ volumes:
   postgres_data:
   nuget-packages:
   redis-data:
+  kafka_data:  # NEW: Kafka data volume
 
 networks:
   app-network:

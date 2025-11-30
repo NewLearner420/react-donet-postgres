@@ -43,6 +43,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Confluent.Kafka": {
+              "target": "Package",
+              "version": "[2.3.0, )"
+            },
             "HotChocolate.AspNetCore": {
               "target": "Package",
               "version": "[13.9.0, )"

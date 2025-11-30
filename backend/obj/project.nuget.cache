@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "RrhKKTiF9/4=",
+  "dgSpecHash": "SH5XIPv5rd4=",
   "success": true,
   "projectFilePath": "/workspaces/react-donet-postgres/backend/backend.csproj",
   "expectedPackageFiles": [
     "/home/codespace/.nuget/packages/bananacakepop.middleware/13.0.0/bananacakepop.middleware.13.0.0.nupkg.sha512",
+    "/home/codespace/.nuget/packages/confluent.kafka/2.3.0/confluent.kafka.2.3.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/greendonut/13.9.0/greendonut.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate/13.9.0/hotchocolate.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.abstractions/13.9.0/hotchocolate.abstractions.13.9.0.nupkg.sha512",
@@ -36,6 +37,7 @@
     "/home/codespace/.nuget/packages/hotchocolate.utilities.dependencyinjection/13.9.0/hotchocolate.utilities.dependencyinjection.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/hotchocolate.validation/13.9.0/hotchocolate.validation.13.9.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/humanizer.core/2.14.1/humanizer.core.2.14.1.nupkg.sha512",
+    "/home/codespace/.nuget/packages/librdkafka.redist/2.3.0/librdkafka.redist.2.3.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/microsoft.aspnetcore.authentication.jwtbearer/8.0.0/microsoft.aspnetcore.authentication.jwtbearer.8.0.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/microsoft.bcl.asyncinterfaces/6.0.0/microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/microsoft.codeanalysis.analyzers/3.3.3/microsoft.codeanalysis.analyzers.3.3.3.nupkg.sha512",
@@ -83,6 +85,7 @@
     "/home/codespace/.nuget/packages/system.identitymodel.tokens.jwt/8.0.2/system.identitymodel.tokens.jwt.8.0.2.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.io.hashing/7.0.0/system.io.hashing.7.0.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.io.pipelines/8.0.0/system.io.pipelines.8.0.0.nupkg.sha512",
+    "/home/codespace/.nuget/packages/system.memory/4.5.0/system.memory.4.5.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.reflection.metadata/6.0.1/system.reflection.metadata.6.0.1.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
     "/home/codespace/.nuget/packages/system.text.encoding.codepages/6.0.0/system.text.encoding.codepages.6.0.0.nupkg.sha512",

@@ -12,6 +12,36 @@ services:
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
+  # Kafka KRaft (Single Node for Learning)
+  - type: web
+    name: kafka-kraft
+    runtime: docker
+    plan: free
+    dockerfilePath: ./kafka/Dockerfile
+    dockerContext: ./kafka
+    healthCheckPath: /health
+    envVars:
+      - key: KAFKA_NODE_ID
+        value: "1"
+      - key: KAFKA_PROCESS_ROLES
+        value: "broker,controller"
+      - key: KAFKA_LISTENERS
+        value: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
+      - key: KAFKA_ADVERTISED_LISTENERS
+        sync: false  # Set to your Render service URL
+      - key: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+        value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      - key: KAFKA_CONTROLLER_QUORUM_VOTERS
+        value: "1@kafka-kraft:9093"
+      - key: KAFKA_CONTROLLER_LISTENER_NAMES
+        value: "CONTROLLER"
+      - key: KAFKA_INTER_BROKER_LISTENER_NAME
+        value: "PLAINTEXT"
+      - key: KAFKA_LOG_DIRS
+        value: "/tmp/kraft-combined-logs"
+      - key: CLUSTER_ID
+        value: "MkU3OEVBNTcwNTJENDM2Qk"  # Generate your own with kafka-storage.sh random-uuid
+
   # Keycloak
   - type: web
     name: keycloak
@@ -52,12 +82,16 @@ services:
       - key: ASPNETCORE_URLS
         value: http://+:$PORT
       - key: DATABASE_URL
-        value: postgresql://app_user:6GBpMxK16YRZYJJAv3qw51lON98PXBKr@dpg-d4jf9bvgi27c739lmt30-a/crud_users_db_lm2o
+        fromDatabase:
+          name: postgres-db
+          property: connectionString
       - key: ConnectionStrings__Redis
         fromService:
           name: redis-cache
           type: redis
           property: connectionString
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false  # Set to kafka-kraft service URL
       - key: KEYCLOAK_SERVICE_URL
         sync: false
       - key: Keycloak__Audience
